@@ -68,7 +68,7 @@
   .phone-status.ok{color:var(--green)}
   .phone-status.err{color:var(--red)}
 
-  /* TITLE PILLS (REPLACED RANKS) */
+  /* TITLE PILLS */
   .rank-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .rank-pill{background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;user-select:none}
   .rank-pill:active{transform:scale(.95)}
@@ -81,12 +81,6 @@
   .confirm-row:last-child{border-bottom:none}
   .confirm-key{font-size:12px;color:var(--muted);width:70px;flex-shrink:0;padding-top:2px}
   .confirm-val{font-size:15px;font-weight:600;word-break:break-all}
-
-  /* STATUS BAR */
-  .sbar{border-radius:10px;padding:12px 14px;font-size:13px;display:flex;align-items:flex-start;gap:8px;line-height:1.6;margin-bottom:14px}
-  .sbar.hidden{display:none}
-  .sbar.error{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--red)}
-  .sbar.success{background:rgba(0,200,83,.1);border:1px solid rgba(0,200,83,.3);color:var(--green)}
 
   /* BUTTONS */
   .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px;border:none;border-radius:12px;font-family:'Sarabun',sans-serif;font-size:16px;font-weight:700;cursor:pointer;transition:all .2s;-webkit-appearance:none;text-decoration:none}
@@ -127,13 +121,18 @@
 
 <script>
   // ============================================================
-  // TEMPLATE CONFIGURATION (ตั้งค่าที่นี่ สำหรับ HTML)
+  // TEMPLATE CONFIGURATION (ตั้งค่าที่นี่ สำหรับลูกค้าแต่ละราย)
   // ============================================================
-  const APP_CONFIG = {
-    LIFF_ID:  '2009804334-kIwnQkDW',
+      LIFF_ID:  '2009804334-kIwnQkDW',
     GAS_URL:  'https://script.google.com/macros/s/AKfycbyNG5xPRMJ8tM-NynWQd5dZVvitH3ubWK8y6uqTGRBOjaQj1Bp_ixX_H4N1wMndpDOM4Q/exec',
     ORG_NAME: 'หอพักเดโม',
     TG_BOT:   'smart2026_parcel_bot',
+  const APP_CONFIG = {
+    LIFF_ID:      '2009804334-kIwnQkDW',
+    GAS_URL:      'https://script.google.com/macros/s/AKfycbyNG5xPRMJ8tM-NynWQd5dZVvitH3ubWK8y6uqTGRBOjaQj1Bp_ixX_H4N1wMndpDOM4Q/exec',
+    ORG_NAME:     'หอพักเดโม',
+    TG_BOT:       'smart2026_parcel_bot', // ใส่ถ้าซื้อแพ็กเกจพรีเมียม
+    HAS_TELEGRAM: false // 📦 false = ไม่แจ้งผ่าน Telegram | 🚀 true = แจ้งผ่าน Telegram
   };
 </script>
 
@@ -148,9 +147,10 @@
   <div class="ov-title green">ลงทะเบียนสำเร็จ!</div>
   <div class="success-name" id="ok-name">—</div>
   <div class="success-phone" id="ok-phone">—</div>
-  <div style="font-size:13px;color:var(--muted);margin-top:4px">เชื่อมต่อ Telegram เพื่อรับแจ้งเตือนพัสดุ</div>
-  <button class="btn btn-primary" style="max-width:260px;margin-top:8px" onclick="goTelegramStep()">✈️ ไปขั้นตอนถัดไป →</button>
-  <button class="btn btn-secondary" style="max-width:260px" onclick="liff.closeWindow()">ข้ามไปก่อน</button>
+  
+  <div id="ok-tg-hint" style="font-size:13px;color:var(--muted);margin-top:4px">เชื่อมต่อ Telegram เพื่อรับแจ้งเตือนพัสดุ</div>
+  <button class="btn btn-primary" style="max-width:260px;margin-top:8px" id="btn-next-step" onclick="goTelegramStep()">✈️ ไปขั้นตอนถัดไป →</button>
+  <button class="btn btn-secondary" style="max-width:260px" id="btn-close-ok" onclick="liff.closeWindow()">ข้ามไปก่อน</button>
 </div>
 
 <div class="hdr">
@@ -163,13 +163,11 @@
 
 <div class="content">
 
-  <div class="steps">
+  <div class="steps" id="steps-container">
     <div class="step active" id="step1"><span class="step-num">1</span>ข้อมูล</div>
     <div class="step"        id="step2"><span class="step-num">2</span>ยืนยัน</div>
     <div class="step"        id="step3"><span class="step-num">3</span>Telegram</div>
   </div>
-
-  <div class="sbar hidden" id="sbar"><span id="sbar-icon">ℹ️</span><span id="sbar-txt"></span></div>
 
   <!-- ====== STEP 1: กรอกข้อมูล ====== -->
   <div id="sec-form">
@@ -177,7 +175,7 @@
     <div class="welcome">
       <div class="welcome-icon">📦</div>
       <div class="welcome-title">ระบบแจ้งเตือนพัสดุ</div>
-      <div class="welcome-sub">ลงทะเบียนครั้งเดียว ระบบจะแจ้งเตือนอัตโนมัติ<br>เมื่อมีพัสดุมาถึงและพร้อมรับ</div>
+      <div class="welcome-sub">ลงทะเบียนครั้งเดียว ระบบจะจัดการข้อมูลอัตโนมัติ<br>สะดวก รวดเร็ว ตรวจสอบได้</div>
     </div>
 
     <div class="card">
@@ -233,15 +231,13 @@
       <div class="confirm-row"><div class="confirm-key">LINE ชื่อ</div><div class="confirm-val" id="c-line">—</div></div>
     </div>
 
-    <div class="sbar hidden" id="sbar2"><span id="sbar2-icon">ℹ️</span><span id="sbar2-txt"></span></div>
-
-    <div class="btn-row">
+    <div class="btn-row" style="margin-top: 16px;">
       <button class="btn btn-secondary btn-back" onclick="goForm()">← แก้ไข</button>
       <button class="btn btn-primary" id="btn-submit" onclick="submitReg()">📋 ยืนยันลงทะเบียน</button>
     </div>
   </div>
 
-  <!-- ====== STEP 3: ผูก Telegram ====== -->
+  <!-- ====== STEP 3: ผูก Telegram (ซ่อนอัตโนมัติหากไม่ได้ใช้) ====== -->
   <div id="sec-telegram" class="hidden">
     <div class="tg-card">
       <div class="tg-icon">✈️</div>
@@ -273,7 +269,16 @@ const S = { userId: '', displayName: '', rank: '', name: '', phone: '', existing
 const $ = id => document.getElementById(id);
 
 async function init() {
-  document.getElementById('ui-org-name').textContent = APP_CONFIG.ORG_NAME;
+  $('ui-org-name').textContent = APP_CONFIG.ORG_NAME;
+  
+  // จัดการ UI กรณีไม่ใช้ Telegram
+  if (!APP_CONFIG.HAS_TELEGRAM) {
+    $('step3').style.display = 'none'; // ซ่อน tab Step 3
+    $('ok-tg-hint').style.display = 'none'; // ซ่อนข้อความเชิญชวนใน overlay
+    $('btn-next-step').textContent = '✔️ ปิดหน้าต่าง'; // เปลี่ยนปุ่มดำเนินการ
+    $('btn-close-ok').style.display = 'none'; // ซ่อนปุ่มข้ามไปก่อน
+  }
+
   try {
     await liff.init({ liffId: APP_CONFIG.LIFF_ID });
     if (!liff.isLoggedIn()) { liff.login(); return; }
@@ -319,7 +324,7 @@ function onPhoneInput() {
   $('f-phone').value = raw; const st = $('phone-status');
   if (!raw) { st.textContent = ''; $('f-phone').className = ''; }
   else if (/^0[689]\d{8}$/.test(raw)) { st.className = 'phone-status ok'; st.textContent = '✓ ถูกต้อง'; $('f-phone').className = 'valid'; S.phone = raw; } 
-  else if (raw.length >= 3) { st.className = 'phone-status err'; st.textContent = raw.length < 10 ? `อีก ${10 - raw.length} หลัก` : '⚠️ ขึ่นต้นด้วย 06/08/09'; $('f-phone').className = 'invalid'; } 
+  else if (raw.length >= 3) { st.className = 'phone-status err'; st.textContent = raw.length < 10 ? `อีก ${10 - raw.length} หลัก` : '⚠️ ขึ้นต้นด้วย 06/08/09'; $('f-phone').className = 'invalid'; } 
   else { st.textContent = ''; }
   checkForm();
 }
@@ -328,7 +333,16 @@ function checkForm() {
   $('btn-next').disabled = !( ($('f-name').value.trim().length >= 2) && (S.rank !== '') && (/^0[689]\d{8}$/.test(($('f-phone').value || '').replace(/\D/g,''))) );
 }
 
-function setStep(n) { [1,2,3].forEach(i => { const el = $('step'+i); el.classList.remove('active','done'); if (i < n) el.classList.add('done'); else if (i === n) el.classList.add('active'); }); }
+function setStep(n) { 
+  [1,2,3].forEach(i => { 
+    const el = $('step'+i); 
+    if(el) {
+      el.classList.remove('active','done'); 
+      if (i < n) el.classList.add('done'); 
+      else if (i === n) el.classList.add('active'); 
+    }
+  }); 
+}
 
 function goConfirm() {
   const name  = $('f-name').value.trim(), phone = $('f-phone').value.trim();
@@ -347,13 +361,19 @@ async function submitReg() {
   const fullName = S.rank === 'อื่นๆ' ? S.name : `${S.rank} ${S.name}`;
   try {
     await callGAS('liff_register', { userId: S.userId, ownerName: fullName, phone: S.phone });
-    $('ok-name').textContent = fullName; $('ok-phone').textContent = S.phone; show('ov-ok');
+    $('ok-name').textContent = fullName; $('ok-phone').textContent = S.phone; 
+    show('ov-ok');
   } catch(e) {
     btn.disabled = false; btn.textContent = '📋 ยืนยันลงทะเบียน'; alert(e.message);
   } finally { S.submitting = false; }
 }
 
 function goTelegramStep() {
+  if (!APP_CONFIG.HAS_TELEGRAM) {
+    liff.closeWindow();
+    return;
+  }
+  
   $('ov-ok').classList.add('hidden'); $('sec-confirm').classList.add('hidden'); $('sec-telegram').classList.remove('hidden'); setStep(3);
   $('btn-open-tg').href = `https://t.me/${APP_CONFIG.TG_BOT}?start=phone_${S.phone}`;
 }
