@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>จ่ายพัสดุ</title>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
+  :root {
+    --orange:#f97316; --orange-dark:#c2410c; --bg:#0d1117;
+    --surface:#161b22; --surface2:#21262d; --border:#30363d;
+    --text:#e6edf3; --muted:#7d8590; --red:#f85149;
+    --yellow:#d29922; --blue:#388bfd; --green:#00c853;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+  .ov{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px;text-align:center;z-index:9999}
+  .ov.hidden{display:none}
+  .ov-icon{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:40px}
+  .ov-icon.load{background:rgba(249,115,22,.1);border:2px solid var(--orange);animation:pulse 1.5s ease-in-out infinite}
+  .ov-icon.block{background:rgba(248,81,73,.15);border:2px solid var(--red)}
+  .ov-icon.ok{background:rgba(0,200,83,.15);border:2px solid var(--green)}
+  .ov-title{font-size:20px;font-weight:700}
+  .ov-title.orange{color:var(--orange)}.ov-title.red{color:var(--red)}.ov-title.green{color:var(--green)}
+  .info-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 24px;width:100%;max-width:320px;text-align:left}
+  .info-card .lbl{font-size:11px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+  .info-card .val{font-size:15px;font-weight:600}
+  .alert{border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.7;width:100%;max-width:320px;white-space:pre-line;text-align:left}
+  .alert.red{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--red)}
+  .alert.green{background:rgba(0,200,83,.1);border:1px solid rgba(0,200,83,.3);color:var(--green)}
+  .alert.muted{background:var(--surface);border:1px solid var(--border);color:var(--muted);text-align:center}
+
+  .hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+  .hdr-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--orange),var(--orange-dark));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .hdr-title{font-size:16px;font-weight:700}
+  .hdr-sub{font-size:11px;color:var(--muted);margin-top:1px}
+  .badge{margin-left:auto;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
+
+  .content{padding:20px 16px 40px;max-width:500px;margin:0 auto}
+  .steps{display:flex;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .step{flex:1;padding:10px 2px;text-align:center;font-size:10px;color:var(--muted);transition:all .3s;border-right:1px solid var(--border)}
+  .step:last-child{border-right:none}
+  .step.active{background:rgba(249,115,22,.1);color:var(--orange);font-weight:600}
+  .step.done{color:var(--orange)}
+  .step-num{display:block;font-size:15px;font-weight:700;margin-bottom:2px;font-family:'IBM Plex Mono',monospace}
+
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border:none;border-radius:10px;font-family:'Sarabun',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;-webkit-appearance:none}
+  .btn:active{transform:scale(.97)}
+  .btn-primary{background:var(--orange);color:#000}
+  .btn-primary:hover{background:var(--orange-dark);color:#fff}
+  .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+  .btn-row{display:flex;gap:8px}
+  .btn-row .btn-back{flex:0 0 auto;width:auto;padding:14px 20px}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px;animation:fadeIn .4s ease}
+  .card-hdr{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
+  .card-body{padding:16px;display:flex;flex-direction:column;gap:14px}
+
+  /* QR Scanner */
+  .qr-wrap{position:relative;width:100%;aspect-ratio:1/1;background:#000;border-radius:12px;overflow:hidden;display:none}
+  .qr-wrap.show{display:block}
+  #qr-reader video{width:100%!important;height:100%!important;object-fit:cover!important}
+  #qr-reader__dashboard_section_csr{display:none!important}
+  .qr-ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:10}
+  .qr-frame{width:60%;aspect-ratio:1/1;position:relative}
+  .qr-frame::before,.qr-frame::after,.qr-fi::before,.qr-fi::after{content:'';position:absolute;width:24px;height:24px;border-color:var(--orange);border-style:solid}
+  .qr-frame::before{top:0;left:0;border-width:3px 0 0 3px}
+  .qr-frame::after{top:0;right:0;border-width:3px 3px 0 0}
+  .qr-fi::before{bottom:0;left:0;border-width:0 0 3px 3px}
+  .qr-fi::after{bottom:0;right:0;border-width:0 3px 3px 0}
+  .qr-line{position:absolute;left:5%;right:5%;height:2px;background:linear-gradient(90deg,transparent,var(--orange),transparent);animation:qrScan 2s ease-in-out infinite;box-shadow:0 0 8px var(--orange)}
+  @keyframes qrScan{0%,100%{top:8%}50%{top:88%}}
+  .qr-status{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:12px;color:rgba(255,255,255,.8);background:rgba(0,0,0,.5);padding:6px;backdrop-filter:blur(4px);z-index:10}
+  .qr-stop{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:20px;padding:6px 12px;font-size:12px;cursor:pointer;backdrop-filter:blur(4px);font-family:'Sarabun',sans-serif;z-index:20}
+  .qr-start{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px 20px;border:2px dashed var(--border);border-radius:14px;cursor:pointer;transition:all .2s;background:var(--surface2)}
+  .qr-start:active{border-color:var(--orange);background:rgba(249,115,22,.06)}
+  .qr-spin{display:none;align-items:center;justify-content:center;gap:12px;padding:16px;background:rgba(249,115,22,.07);border-radius:12px;border:1px solid rgba(249,115,22,.2)}
+  .qr-spin.show{display:flex}
+  .spinner{width:22px;height:22px;border:2.5px solid rgba(249,115,22,.3);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+  .spin-txt{font-size:13px;color:var(--orange);font-weight:600}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-family:'Sarabun',sans-serif;font-size:15px;color:var(--text);outline:none;transition:border-color .2s;-webkit-appearance:none}
+  input:focus{border-color:var(--orange)}
+  input.mono{font-family:'IBM Plex Mono',monospace;font-size:14px;letter-spacing:.5px}
+
+  /* PKG CARD */
+  .pkg-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px}
+  .pkg-hdr{padding:14px 16px;background:rgba(249,115,22,.1);border-bottom:1px solid rgba(249,115,22,.2);font-weight:700;font-size:14px;color:var(--orange);display:flex;justify-content:space-between}
+  .pkg-row{display:flex;padding:11px 16px;border-bottom:1px solid var(--border);gap:12px}
+  .pkg-row:last-child{border-bottom:none}
+  .pkg-key{font-size:12px;color:var(--muted);width:80px;flex-shrink:0;padding-top:2px}
+  .pkg-val{font-size:14px;font-weight:600;word-break:break-all}
+  .pkg-val.mono{font-family:'IBM Plex Mono',monospace;font-size:13px}
+  .pkg-photo{width:100%;border-radius:8px;object-fit:cover;max-height:160px;display:block;margin-top:6px;border:1px solid var(--border)}
+
+  /* SIGNATURE */
+  .sig-box{position:relative;background:#fff;border:2px solid var(--border);border-radius:12px;overflow:hidden;width:100%;aspect-ratio:16/9;touch-action:none}
+  .sig-pad{width:100%;height:100%}
+  .sig-clear{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;z-index:10;font-family:'Sarabun',sans-serif}
+
+  /* WAITING LIST */
+  .wait-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .wait-item{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:all .2s}
+  .wait-item:active{transform:scale(.98);border-color:var(--orange)}
+  .wait-info{display:flex;flex-direction:column;gap:4px}
+  .wait-id{font-size:13px;color:var(--orange);font-weight:700;font-family:'IBM Plex Mono',monospace}
+  .wait-name{font-size:14px;font-weight:600}
+  .wait-time{font-size:11px;color:var(--muted)}
+  .wait-empty{text-align:center;padding:24px;color:var(--muted);font-size:13px;background:var(--surface2);border-radius:10px;border:1px dashed var(--border)}
+
+  /* SBAR */
+  .sbar{margin-bottom:16px;border-radius:10px;padding:12px 14px;font-size:13px;display:flex;align-items:flex-start;gap:8px;line-height:1.5}
+  .sbar.hidden{display:none}
+  .sbar.error{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--red)}
+  .sbar.success{background:rgba(0,200,83,.1);border:1px solid rgba(0,200,83,.3);color:var(--green)}
+  .sbar.info{background:rgba(56,139,253,.1);border:1px solid rgba(56,139,253,.3);color:var(--blue)}
+  .sbar.warning{background:rgba(210,153,34,.1);border:1px solid rgba(210,153,34,.3);color:var(--yellow)}
+  .sbar-icon{flex-shrink:0;margin-top:1px}
+
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.7}}
+  .hidden{display:none!important}
+  .mt8{margin-top:8px}
+  .text-center{text-align:center}
+</style>
+</head>
+<body>
+
+<script>
+  // ============================================================
+  // TEMPLATE CONFIGURATION (ตั้งค่าที่นี่ สำหรับ HTML)
+  // ============================================================
+  const APP_CONFIG = {
+    LIFF_ID:  'ใส่_LIFF_ID_ของลูกค้า',
+    GAS_URL:  'ใส่_GAS_WEBAPP_URL_ของลูกค้า',
+    ORG_NAME: 'ชื่อองค์กรของลูกค้า',
+  };
+</script>
+
+<div id="ov-load" class="ov">
+  <div class="ov-icon load">📬</div>
+  <div class="ov-title orange" id="load-txt">กำลังตรวจสอบสิทธิ์...</div>
+</div>
+<div id="ov-block" class="ov hidden">
+  <div class="ov-icon block">🚫</div>
+  <div class="ov-title red">ไม่มีสิทธิ์เข้าใช้งาน</div>
+  <div class="info-card"><div class="lbl">ผู้ใช้</div><div class="val" id="block-name">—</div></div>
+  <div class="alert red" id="block-reason">—</div>
+  <div class="alert muted">กรุณาพิมพ์รหัสลับใน LINE Chat<br>เพื่อเข้าสู่ระบบเจ้าหน้าที่ก่อน</div>
+  <button class="btn btn-secondary" style="max-width:200px" onclick="liff.closeWindow()">✕ ปิด</button>
+</div>
+<div id="ov-ok" class="ov hidden">
+  <div class="ov-icon ok">✅</div>
+  <div class="ov-title green">จ่ายพัสดุสำเร็จ!</div>
+  <div class="info-card mt8" style="text-align:center;padding:20px">
+    <div style="font-size:12px;color:var(--muted)">จ่ายพัสดุรหัส</div>
+    <div style="font-size:24px;font-weight:700;color:var(--green);font-family:'IBM Plex Mono',monospace" id="ok-id">—</div>
+    <div style="font-size:13px;margin-top:8px" id="ok-name"></div>
+  </div>
+  <div class="alert green">ระบบได้ส่งข้อความแจ้งเตือน<br>ไปยังผู้รับเรียบร้อยแล้ว</div>
+  <button class="btn btn-secondary" style="max-width:240px" onclick="resetAll()">📬 จ่ายพัสดุชิ้นต่อไป</button>
+  <button class="btn btn-primary"   style="max-width:240px" onclick="liff.closeWindow()">✔️ ปิดและกลับสู่แชท</button>
+</div>
+
+<!-- header -->
+<div class="hdr">
+  <div class="hdr-icon">📬</div>
+  <div><div class="hdr-title">จ่ายพัสดุออก</div><div class="hdr-sub" id="ui-org-name">Loading...</div></div>
+  <div class="badge" id="badge-name">...</div>
+</div>
+
+<div class="content">
+  <!-- steps -->
+  <div class="steps">
+    <div class="step active" id="step1"><span class="step-num">1</span>สแกน</div>
+    <div class="step"        id="step2"><span class="step-num">2</span>เซ็นรับ</div>
+  </div>
+
+  <div class="sbar hidden" id="sbar"><span class="sbar-icon" id="sbar-icon">ℹ️</span><span id="sbar-txt"></span></div>
+
+  <!-- STEP 1: SCAN & LIST -->
+  <div id="sec-scan">
+    <div class="card">
+      <div class="card-hdr">📱 สแกน หรือ ค้นหาพัสดุ</div>
+      <div class="card-body">
+        <div class="qr-wrap" id="qr-wrap">
+          <div id="qr-reader"></div>
+          <div class="qr-ov"><div class="qr-frame"><div class="qr-fi"></div><div class="qr-line"></div></div></div>
+          <div class="qr-status" id="qr-status">กำลังค้นหาบาร์โค้ด...</div>
+          <button class="qr-stop" onclick="stopLive()">✕ หยุด</button>
+        </div>
+        
+        <div class="qr-start" id="qr-start" onclick="startLive()">
+          <div style="font-size:42px">📱</div>
+          <div style="font-size:15px;font-weight:700">เปิดกล้องสแกน</div>
+          <div style="font-size:12px;color:var(--muted);text-align:center">สแกนบาร์โค้ดพัสดุ<br>หรือ QR รหัสรับพัสดุ</div>
+        </div>
+        
+        <div class="qr-spin" id="qr-spin"><div class="spinner"></div><div class="spin-txt" id="qr-spin-txt">กำลังเปิดกล้อง...</div></div>
+        
+        <div style="text-align:center;color:var(--muted);font-size:12px;margin:8px 0">- หรือ -</div>
+        
+        <div class="field">
+          <label>พิมพ์รหัสรับ / เลขพัสดุ</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="manual-val" class="mono" placeholder="เช่น 1504681400" autocomplete="off" onkeydown="if(event.key==='Enter')searchPackage()">
+            <button class="btn btn-primary" style="width:auto;padding:0 20px" onclick="searchPackage()">🔍</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WAITING LIST SECTION -->
+    <div class="card">
+      <div class="card-hdr" style="justify-content:space-between">
+        <div>📋 รายการพัสดุรอรับ</div>
+        <button class="btn btn-secondary" style="width:auto;padding:4px 10px;font-size:11px;height:auto" onclick="loadWaiting(1)">🔄 รีเฟรช</button>
+      </div>
+      <div class="card-body">
+        <input type="text" id="wait-search" placeholder="ค้นหาชื่อ, เบอร์, รหัส..." autocomplete="off" oninput="debounceWaitSearch()">
+        <div id="wait-list-container" class="wait-list">
+          <div class="wait-empty">กำลังโหลดรายการ...</div>
+        </div>
+        <div id="wait-pagination" style="display:flex;justify-content:space-between;margin-top:12px;align-items:center"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: SIGN -->
+  <div id="sec-sign" class="hidden">
+    <div class="pkg-card">
+      <div class="pkg-hdr">
+        <span>ข้อมูลพัสดุ</span>
+        <span style="color:var(--text);background:var(--orange);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;color:#000">พร้อมจ่าย</span>
+      </div>
+      <div class="pkg-row"><div class="pkg-key">รหัสรับ</div><div class="pkg-val mono" id="p-id" style="color:var(--orange)">—</div></div>
+      <div class="pkg-row"><div class="pkg-key">เลขพัสดุ</div><div class="pkg-val mono" id="p-trk">—</div></div>
+      <div class="pkg-row"><div class="pkg-key">ผู้รับ</div><div class="pkg-val" id="p-name">—</div></div>
+      <div class="pkg-row"><div class="pkg-key">โทรศัพท์</div><div class="pkg-val mono" id="p-phone">—</div></div>
+      <div class="pkg-row"><div class="pkg-key">ลักษณะ</div><div class="pkg-val" id="p-type">—</div></div>
+      <div class="pkg-row"><div class="pkg-key">เวลาเข้า</div><div class="pkg-val mono" id="p-time">—</div></div>
+      <div id="p-photo-row" class="pkg-row" style="flex-direction:column;display:none">
+        <div class="pkg-key" style="width:100%">รูปตอนรับเข้า</div>
+        <img id="p-photo" class="pkg-photo" src="" alt="Package photo">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr">✍️ ลายเซ็นผู้รับ</div>
+      <div class="card-body">
+        <div class="sig-box">
+          <canvas id="sig-pad" class="sig-pad"></canvas>
+          <button class="sig-clear" onclick="sigPad.clear()">🗑️ ล้าง</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);text-align:center">กรุณาให้ผู้รับเซ็นชื่อในกรอบสีขาวด้านบน</div>
+      </div>
+    </div>
+
+    <div class="sbar hidden" id="sbar2"><span class="sbar-icon" id="sbar2-icon">ℹ️</span><span id="sbar2-txt"></span></div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary btn-back" onclick="goStep1()">← กลับ</button>
+      <button class="btn btn-primary" id="btn-submit" onclick="submitPickup()">📦 ยืนยันจ่ายพัสดุ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const S = {
+  adminName:'', adminUserId:'', adminType:'',
+  qrScanner:null, qrRunning:false,
+  pkgInfo:null, submitting:false,
+  waitPage: 1, waitSearch: ''
+};
+const $ = id => document.getElementById(id);
+let sigPad = null;
+let waitTimer = null;
+
+// ── INIT ──
+async function init() {
+  document.getElementById('ui-org-name').textContent = APP_CONFIG.ORG_NAME;
+  try {
+    await liff.init({ liffId: APP_CONFIG.LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    const p = await liff.getProfile();
+    S.adminName=p.displayName; S.adminUserId=p.userId;
+    setLoad('กำลังตรวจสอบสิทธิ์...');
+    
+    const auth = await checkAuth(p.userId);
+    if (!auth.isAdmin) { $('block-name').textContent=p.displayName; $('block-reason').textContent=auth.reason||'ยังไม่ได้เข้าระบบ'; show('ov-block'); return; }
+    
+    S.adminType=auth.adminType||'STAFF';
+    $('badge-name').textContent=p.displayName;
+    show('main');
+    
+    S.qrScanner = new Html5Qrcode("qr-reader");
+    initSigPad();
+    
+    // โหลดรายการรอรับครั้งแรก
+    loadWaiting(1);
+
+  } catch(e) { setLoad('❌ '+e.message); setTimeout(()=>show('main'), 1500); }
+}
+
+async function checkAuth(uid) {
+  try { const r=await fetch(`${APP_CONFIG.GAS_URL}?action=check_admin&userId=${encodeURIComponent(uid)}`); return r.ok?await r.json():{isAdmin:false,reason:'HTTP '+r.status}; }
+  catch(e){return{isAdmin:false,reason:e.message};}
+}
+function show(s){['ov-load','ov-block','ov-ok'].forEach(x=>$(x).classList.add('hidden'));if(s!=='main')$(s).classList.remove('hidden');}
+function setLoad(t){$('load-txt').textContent=t;}
+
+// ── WAITING LIST ──
+function debounceWaitSearch() {
+  clearTimeout(waitTimer);
+  waitTimer = setTimeout(() => loadWaiting(1), 500);
+}
+
+async function loadWaiting(page = 1) {
+  S.waitPage = page;
+  const container = $('wait-list-container');
+  container.innerHTML = '<div class="wait-empty"><div class="spinner" style="margin:0 auto; border-top-color:var(--orange)"></div></div>';
+  
+  try {
+    const res = await callGAS('list_waiting_packages', {
+      userId: S.adminUserId,
+      search: $('wait-search').value.trim(),
+      page: S.waitPage
+    });
+    renderWaiting(res);
+  } catch(e) {
+    container.innerHTML = `<div class="wait-empty" style="color:var(--red)">❌ ${e.message}</div>`;
+  }
+}
+
+function renderWaiting(data) {
+  const container = $('wait-list-container');
+  const pagiBox = $('wait-pagination');
+  
+  if (!data.items || data.items.length === 0) {
+    container.innerHTML = '<div class="wait-empty">🎉 ไม่มีพัสดุรอรับในขณะนี้</div>';
+    pagiBox.innerHTML = '';
+    return;
+  }
+  
+  let html = '';
+  data.items.forEach(p => {
+    html += `
+      <div class="wait-item" onclick="lookup('${p.packageId}')">
+        <div class="wait-info">
+          <div class="wait-id">${p.packageId}</div>
+          <div class="wait-name">${p.recipientName}</div>
+          <div class="wait-time">เข้าเมื่อ: ${p.checkIn}</div>
+        </div>
+        <div style="color:var(--muted)">➔</div>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+
+  // Pagination UI
+  let pagi = '';
+  if (data.page > 1) {
+    pagi += `<button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:12px" onclick="loadWaiting(${data.page - 1})">⬅️ ก่อนหน้า</button>`;
+  } else {
+    pagi += `<div style="width:75px"></div>`; // spacer
+  }
+  
+  pagi += `<span style="font-size:12px;color:var(--muted)">หน้า ${data.page}/${data.totalPages}</span>`;
+  
+  if (data.page < data.totalPages) {
+    pagi += `<button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:12px" onclick="loadWaiting(${data.page + 1})">ถัดไป ➡️</button>`;
+  } else {
+    pagi += `<div style="width:75px"></div>`; // spacer
+  }
+  
+  pagiBox.innerHTML = pagi;
+}
+
+// ── QR SCAN ──
+async function startLive() {
+  if(!S.qrScanner)S.qrScanner=new Html5Qrcode("qr-reader");
+  $('qr-start').style.display='none';$('qr-spin').classList.add('show');$('qr-spin-txt').textContent='กำลังเปิดกล้อง...';
+  try {
+    await S.qrScanner.start({facingMode:"environment"},{fps:10,aspectRatio:1.0,disableFlip:false},
+      (dec)=>{const t=parseTrk(dec);if(t){stopLive();lookup(t);}},()=>{});
+    $('qr-wrap').classList.add('show');$('qr-spin').classList.remove('show');$('qr-status').textContent='กำลังค้นหาบาร์โค้ด...';S.qrRunning=true;
+  } catch(err){$('qr-spin').classList.remove('show');$('qr-start').style.display='';setSbar('warning','⚠️ เปิดกล้องไม่ได้ — พิมพ์รหัสด้านล่างแทน');}
+}
+function stopLive(){S.qrRunning=false;if(S.qrScanner&&S.qrScanner.isScanning)S.qrScanner.stop().catch(()=>{});$('qr-wrap').classList.remove('show');$('qr-spin').classList.remove('show');}
+
+// ── MANUAL SEARCH ──
+function searchPackage(){
+  const val=$('manual-val').value.trim();
+  if(val.length<4){setSbar('error','❌ กรุณาใส่รหัสอย่างน้อย 4 ตัว');return;}
+  lookup(val);
+}
+
+// ── LOOKUP ──
+async function lookup(identifier) {
+  stopLive();
+  setSbar('info','⏳ กำลังค้นหาข้อมูล: '+identifier);
+  try {
+    const res = await callGAS('lookup_package',{identifier, userId:S.adminUserId});
+    if(!res||!res.packageId) throw new Error('ข้อมูลไม่ครบถ้วน');
+    if(res.status!=='รอรับ') throw new Error(`พัสดุนี้สถานะ "${res.status}"\nถูกจ่ายออกไปแล้ว`);
+    S.pkgInfo = res;
+    goStep2();
+  } catch(e) { setSbar('error','❌ '+e.message); }
+}
+
+// ── NAVIGATION ──
+function setStep(n){[1,2].forEach(i=>{const el=$('step'+i);el.classList.remove('active','done');if(i<n)el.classList.add('done');else if(i===n)el.classList.add('active');});}
+
+function goStep1(){
+  stopLive();
+  $('sec-sign').classList.add('hidden');$('sec-scan').classList.remove('hidden');
+  setStep(1);clearSbar();$('manual-val').value='';S.pkgInfo=null;
+}
+
+function goStep2(){
+  if(!S.pkgInfo) return;
+  const p=S.pkgInfo;
+  $('p-id').textContent=p.packageId; $('p-trk').textContent=p.trackingNumber||'—';
+  $('p-name').textContent=p.recipientName; $('p-phone').textContent=p.phone;
+  $('p-type').textContent=p.packageType||'—'; $('p-time').textContent=String(p.checkIn).substring(0,16);
+  
+  if(p.photoUrl){$('p-photo').src=p.photoUrl;$('p-photo-row').style.display='flex';}
+  else{$('p-photo-row').style.display='none';}
+  
+  if(sigPad) sigPad.clear();
+  
+  $('sec-scan').classList.add('hidden');$('sec-sign').classList.remove('hidden');
+  setStep(2);clearSbar();clearSbar2();
+  setTimeout(resizeCanvas,100);
+}
+
+// ── SIGNATURE ──
+function initSigPad(){
+  const c=$('sig-pad');
+  sigPad=new SignaturePad(c,{minWidth:1.5,maxWidth:3.5,penColor:"#0d1117",backgroundColor:"#ffffff"});
+  window.addEventListener("resize", resizeCanvas);
+}
+function resizeCanvas(){
+  const c=$('sig-pad');if(!c)return;
+  const ratio=Math.max(window.devicePixelRatio||1, 1);
+  c.width=c.offsetWidth*ratio; c.height=c.offsetHeight*ratio;
+  c.getContext("2d").scale(ratio,ratio);
+  if(sigPad)sigPad.clear();
+}
+
+// ── SUBMIT ──
+async function submitPickup(){
+  if(S.submitting)return;
+  if(sigPad.isEmpty()){setSbar2('error','❌ กรุณาเซ็นชื่อรับพัสดุก่อน');return;}
+  
+  S.submitting=true;
+  const btn=$('btn-submit');btn.disabled=true;btn.textContent='⏳ กำลังประมวลผล...';
+  clearSbar2();
+  
+  const b64 = sigPad.toDataURL("image/png").split(',')[1];
+  
+  try {
+    const res = await callGAS('pickup_package',{
+      userId: S.adminUserId,
+      packageId: S.pkgInfo.packageId,
+      signatureBase64: b64,
+      tgChatId: S.pkgInfo.tgChatId,
+      adminName: S.adminName
+    }, 45000);
+    
+    $('ok-id').textContent=S.pkgInfo.packageId;
+    $('ok-name').textContent='ผู้รับ: '+S.pkgInfo.recipientName;
+    show('ov-ok');
+  } catch(e) {
+    setSbar2('error','❌ '+e.message);
+    btn.disabled=false; btn.textContent='📦 ยืนยันจ่ายพัสดุ';
+  } finally { S.submitting=false; }
+}
+
+// ── RESET ──
+function resetAll(){
+  goStep1(); show('main');
+  loadWaiting(S.waitPage); // รีเฟรชรายการรอรับ
+}
+
+// ── GAS CALL ──
+async function callGAS(action,extra,timeoutMs=30000){
+  const ctrl=new AbortController(),tid=setTimeout(()=>ctrl.abort(),timeoutMs);
+  try{
+    const r=await fetch(APP_CONFIG.GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action,...extra}),signal:ctrl.signal});
+    clearTimeout(tid);if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=JSON.parse(await r.text());
+    if(d.status==='error')throw new Error(d.message);
+    return d.result!==undefined?d.result:d;
+  }catch(e){clearTimeout(tid);throw e;}
+}
+
+function parseTrk(raw){let t=(raw||'').trim();if(t.startsWith('http')){try{t=new URL(t).pathname.split('/').filter(Boolean).pop()||t;}catch(_){}}if(t.startsWith('{')){try{const o=JSON.parse(t);t=o.tracking||o.trackingNumber||o.id||t;}catch(_){}}return t.length>=4?t:null;}
+
+// ── SBAR ──
+function setSbar(type,text){if(!type){clearSbar();return;}const b=$('sbar');b.className='sbar '+type;b.classList.remove('hidden');$('sbar-icon').textContent={error:'❌',success:'✅',info:'ℹ️',warning:'⚠️'}[type]||'ℹ️';$('sbar-txt').textContent=text;}
+function clearSbar(){$('sbar').classList.add('hidden');}
+function setSbar2(type,text){if(!type){clearSbar2();return;}const b=$('sbar2');b.className='sbar '+type;b.classList.remove('hidden');$('sbar2-icon').textContent={error:'❌',success:'✅',info:'ℹ️',warning:'⚠️'}[type]||'ℹ️';$('sbar2-txt').textContent=text;}
+function clearSbar2(){$('sbar2').classList.add('hidden');}
+
+init();
+</script>
+</body>
+</html>
