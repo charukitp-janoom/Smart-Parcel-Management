@@ -94,7 +94,7 @@
   /* PKG CARD */
   .pkg-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px}
   .pkg-hdr{padding:14px 16px;background:rgba(249,115,22,.1);border-bottom:1px solid rgba(249,115,22,.2);font-weight:700;font-size:14px;color:var(--orange);display:flex;justify-content:space-between}
-  .pkg-row{display:flex;padding:11px 16px;border-bottom:1px solid var(--border);gap:12px}
+  .pkg-row{display:flex;padding:11px 16px;border-bottom:1px solid var(--border);gap:12px;min-height:45px}
   .pkg-row:last-child{border-bottom:none}
   .pkg-key{font-size:12px;color:var(--muted);width:80px;flex-shrink:0;padding-top:2px}
   .pkg-val{font-size:14px;font-weight:600;word-break:break-all}
@@ -130,6 +130,8 @@
   .hidden{display:none!important}
   .mt8{margin-top:8px}
   .text-center{text-align:center}
+  
+  .loading-text { color: var(--muted); font-style: italic; font-weight: normal; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -165,10 +167,13 @@
     <div style="font-size:24px;font-weight:700;color:var(--green);font-family:'IBM Plex Mono',monospace" id="ok-id">—</div>
     <div style="font-size:13px;margin-top:8px" id="ok-name"></div>
   </div>
-  <div class="alert green">ระบบได้ส่งข้อความแจ้งเตือน<br>ไปยังผู้รับเรียบร้อยแล้ว</div>
+  <div class="alert green">ระบบได้อัปเดตข้อมูล<br>และแจ้งเตือนผู้รับเรียบร้อยแล้ว</div>
   <button class="btn btn-secondary" style="max-width:240px" onclick="resetAll()">📬 จ่ายพัสดุชิ้นต่อไป</button>
   <button class="btn btn-primary"   style="max-width:240px" onclick="liff.closeWindow()">✔️ ปิดและกลับสู่แชท</button>
 </div>
+
+<!-- hidden file input for Gallery QR Scan -->
+<input type="file" id="qr-file" accept="image/*" class="hidden">
 
 <!-- header -->
 <div class="hdr">
@@ -205,6 +210,8 @@
         </div>
         
         <div class="qr-spin" id="qr-spin"><div class="spinner"></div><div class="spin-txt" id="qr-spin-txt">กำลังเปิดกล้อง...</div></div>
+        
+        <button class="btn btn-secondary mt8" onclick="$('qr-file').value='';$('qr-file').click()" style="font-size:13px; padding:10px;">🖼️ เลือกรูปจากเครื่อง (สแกนรูป QR)</button>
         
         <div style="text-align:center;color:var(--muted);font-size:12px;margin:8px 0">- หรือ -</div>
         
@@ -286,7 +293,7 @@ let waitTimer = null;
 
 // ── INIT ──
 async function init() {
-  document.getElementById('ui-org-name').textContent = APP_CONFIG.ORG_NAME;
+  $('ui-org-name').textContent = APP_CONFIG.ORG_NAME;
   try {
     await liff.init({ liffId: APP_CONFIG.LIFF_ID });
     if (!liff.isLoggedIn()) { liff.login(); return; }
@@ -301,7 +308,9 @@ async function init() {
     $('badge-name').textContent=p.displayName;
     show('main');
     
+    // ตั้งค่าตัวสแกนและลายเซ็น
     S.qrScanner = new Html5Qrcode("qr-reader");
+    $('qr-file').addEventListener('change', onQRFile);
     initSigPad();
     
     // โหลดรายการรอรับครั้งแรก
@@ -316,6 +325,23 @@ async function checkAuth(uid) {
 }
 function show(s){['ov-load','ov-block','ov-ok'].forEach(x=>$(x).classList.add('hidden'));if(s!=='main')$(s).classList.remove('hidden');}
 function setLoad(t){$('load-txt').textContent=t;}
+
+// ── AUDIO & HAPTIC FEEDBACK ──
+function playSuccessBeep() {
+  if(navigator.vibrate) navigator.vibrate(200);
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(800, ctx.currentTime);
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.1);
+    osc.stop(ctx.currentTime + 0.1);
+  } catch(e) {}
+}
 
 // ── WAITING LIST ──
 function debounceWaitSearch() {
@@ -394,7 +420,28 @@ async function startLive() {
     $('qr-wrap').classList.add('show');$('qr-spin').classList.remove('show');$('qr-status').textContent='กำลังค้นหาบาร์โค้ด...';S.qrRunning=true;
   } catch(err){$('qr-spin').classList.remove('show');$('qr-start').style.display='';setSbar('warning','⚠️ เปิดกล้องไม่ได้ — พิมพ์รหัสด้านล่างแทน');}
 }
+
 function stopLive(){S.qrRunning=false;if(S.qrScanner&&S.qrScanner.isScanning)S.qrScanner.stop().catch(()=>{});$('qr-wrap').classList.remove('show');$('qr-spin').classList.remove('show');}
+
+// ── GALLERY QR SCAN ──
+async function onQRFile(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  e.target.value = '';
+  $('qr-spin').classList.add('show');
+  $('qr-spin-txt').textContent = 'กำลังสแกนรูปภาพ...';
+  try {
+    if(!S.qrScanner) S.qrScanner = new Html5Qrcode("qr-reader");
+    const dec = await S.qrScanner.scanFile(file, true);
+    const t = parseTrk(dec);
+    if(t) { stopLive(); lookup(t); }
+    else setSbar('warning', '⚠️ หาเลขพัสดุในรูปไม่เจอ — กรุณาพิมพ์เลขเอง');
+  } catch(err) {
+    setSbar('warning', '⚠️ ระบบไม่สามารถอ่านบาร์โค้ดในรูปนี้ได้');
+  } finally {
+    $('qr-spin').classList.remove('show');
+  }
+}
 
 // ── MANUAL SEARCH ──
 function searchPackage(){
@@ -403,17 +450,60 @@ function searchPackage(){
   lookup(val);
 }
 
-// ── LOOKUP ──
+// ── LOOKUP (INSTANT TRANSITION UX) ──
 async function lookup(identifier) {
   stopLive();
-  setSbar('info','⏳ กำลังค้นหาข้อมูล: '+identifier);
+  $('manual-val').value = '';
+  
+  // ให้ Feedback ทันที (สั่น + เสียงบี๊บ)
+  playSuccessBeep();
+
+  // ทรานซิชันสลับหน้าไป Step 2 ทันที พร้อมแสดงสถานะ "กำลังโหลด"
+  $('sec-scan').classList.add('hidden');
+  $('sec-sign').classList.remove('hidden');
+  setStep(2);
+  clearSbar();
+  clearSbar2();
+  
+  const loaderHtml = `<span class="loading-text">⏳ กำลังค้นหาข้อมูล...</span>`;
+  $('p-id').innerHTML = loaderHtml;
+  $('p-trk').innerHTML = loaderHtml;
+  $('p-name').innerHTML = loaderHtml;
+  $('p-phone').innerHTML = loaderHtml;
+  $('p-type').innerHTML = loaderHtml;
+  $('p-time').innerHTML = loaderHtml;
+  $('p-photo-row').style.display = 'none';
+  $('btn-submit').disabled = true;
+
   try {
+    // ยิงคำขอไปหลังบ้าน
     const res = await callGAS('lookup_package',{identifier, userId:S.adminUserId});
     if(!res||!res.packageId) throw new Error('ข้อมูลไม่ครบถ้วน');
-    if(res.status!=='รอรับ') throw new Error(`พัสดุนี้สถานะ "${res.status}"\nถูกจ่ายออกไปแล้ว`);
+    if(res.status!=='รอรับ') throw new Error(`พัสดุรหัส ${res.packageId}\nสถานะปัจจุบันคือ "${res.status}"\n(ถูกจ่ายออกไปแล้ว)`);
+    
     S.pkgInfo = res;
-    goStep2();
-  } catch(e) { setSbar('error','❌ '+e.message); }
+    
+    // อัปเดต UI เมื่อได้ข้อมูลจริง
+    $('p-id').textContent = res.packageId; 
+    $('p-trk').textContent = res.trackingNumber || '—';
+    $('p-name').textContent = res.recipientName; 
+    $('p-phone').textContent = res.phone;
+    $('p-type').textContent = res.packageType || '—'; 
+    $('p-time').textContent = String(res.checkIn).substring(0,16);
+    
+    if(res.photoUrl){$('p-photo').src=res.photoUrl;$('p-photo-row').style.display='flex';}
+    
+    if(sigPad) sigPad.clear();
+    setTimeout(resizeCanvas, 100);
+    
+    $('btn-submit').disabled = false;
+    setSbar2('success', '✅ พบข้อมูลพัสดุ กรุณาให้ผู้รับเซ็นชื่อ');
+
+  } catch(e) { 
+    // หากล้มเหลว หรือถูกรับไปแล้ว ให้ตีกลับไปหน้าแรก
+    goStep1();
+    setSbar('error','❌ '+e.message); 
+  }
 }
 
 // ── NAVIGATION ──
@@ -423,23 +513,6 @@ function goStep1(){
   stopLive();
   $('sec-sign').classList.add('hidden');$('sec-scan').classList.remove('hidden');
   setStep(1);clearSbar();$('manual-val').value='';S.pkgInfo=null;
-}
-
-function goStep2(){
-  if(!S.pkgInfo) return;
-  const p=S.pkgInfo;
-  $('p-id').textContent=p.packageId; $('p-trk').textContent=p.trackingNumber||'—';
-  $('p-name').textContent=p.recipientName; $('p-phone').textContent=p.phone;
-  $('p-type').textContent=p.packageType||'—'; $('p-time').textContent=String(p.checkIn).substring(0,16);
-  
-  if(p.photoUrl){$('p-photo').src=p.photoUrl;$('p-photo-row').style.display='flex';}
-  else{$('p-photo-row').style.display='none';}
-  
-  if(sigPad) sigPad.clear();
-  
-  $('sec-scan').classList.add('hidden');$('sec-sign').classList.remove('hidden');
-  setStep(2);clearSbar();clearSbar2();
-  setTimeout(resizeCanvas,100);
 }
 
 // ── SIGNATURE ──
