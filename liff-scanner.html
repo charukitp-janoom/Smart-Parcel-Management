@@ -3,29 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>บันทึกพัสดุ</title>
+<title>จ่ายพัสดุ</title>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
   :root {
-    --green:#00c853; --green-dark:#009624; --bg:#0d1117;
+    --orange:#f97316; --orange-dark:#c2410c; --bg:#0d1117;
     --surface:#161b22; --surface2:#21262d; --border:#30363d;
     --text:#e6edf3; --muted:#7d8590; --red:#f85149;
-    --yellow:#d29922; --blue:#388bfd; --amber:#f59e0b;
-    --purple:#a371f7;
+    --yellow:#d29922; --blue:#388bfd; --green:#00c853;
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-  
+
   .ov{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px;text-align:center;z-index:9999}
   .ov.hidden{display:none}
   .ov-icon{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:40px}
-  .ov-icon.load{background:rgba(56,139,253,.1);border:2px solid var(--blue);animation:pulse 1.5s ease-in-out infinite}
+  .ov-icon.load{background:rgba(249,115,22,.1);border:2px solid var(--orange);animation:pulse 1.5s ease-in-out infinite}
   .ov-icon.block{background:rgba(248,81,73,.15);border:2px solid var(--red)}
   .ov-icon.ok{background:rgba(0,200,83,.15);border:2px solid var(--green)}
   .ov-title{font-size:20px;font-weight:700}
-  .ov-title.red{color:var(--red)}.ov-title.green{color:var(--green)}.ov-title.blue{color:var(--blue)}
+  .ov-title.orange{color:var(--orange)}.ov-title.red{color:var(--red)}.ov-title.green{color:var(--green)}
   .info-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 24px;width:100%;max-width:320px;text-align:left}
   .info-card .lbl{font-size:11px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
   .info-card .val{font-size:15px;font-weight:600}
@@ -33,90 +33,88 @@
   .alert.red{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--red)}
   .alert.green{background:rgba(0,200,83,.1);border:1px solid rgba(0,200,83,.3);color:var(--green)}
   .alert.muted{background:var(--surface);border:1px solid var(--border);color:var(--muted);text-align:center}
-  .success-id{font-family:'IBM Plex Mono',monospace;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 24px;font-size:15px;font-weight:600;letter-spacing:1px;word-break:break-all;max-width:320px;width:100%;text-align:center}
-  
+
   .hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
-  .hdr-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--green),var(--green-dark));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .hdr-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--orange),var(--orange-dark));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
   .hdr-title{font-size:16px;font-weight:700}
   .hdr-sub{font-size:11px;color:var(--muted);margin-top:1px}
   .badge{margin-left:auto;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
-  
+
   .content{padding:20px 16px 40px;max-width:500px;margin:0 auto}
   .steps{display:flex;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
   .step{flex:1;padding:10px 2px;text-align:center;font-size:10px;color:var(--muted);transition:all .3s;border-right:1px solid var(--border)}
   .step:last-child{border-right:none}
-  .step.active{background:rgba(0,200,83,.1);color:var(--green);font-weight:600}
-  .step.done{color:var(--green)}
+  .step.active{background:rgba(249,115,22,.1);color:var(--orange);font-weight:600}
+  .step.done{color:var(--orange)}
   .step-num{display:block;font-size:15px;font-weight:700;margin-bottom:2px;font-family:'IBM Plex Mono',monospace}
-  
+
   .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border:none;border-radius:10px;font-family:'Sarabun',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;-webkit-appearance:none}
   .btn:active{transform:scale(.97)}
-  .btn-primary{background:var(--green);color:#000}
-  .btn-primary:hover{background:#00e676}
+  .btn-primary{background:var(--orange);color:#000}
+  .btn-primary:hover{background:var(--orange-dark);color:#fff}
   .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
   .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
   .btn-row{display:flex;gap:8px}
   .btn-row .btn-back{flex:0 0 auto;width:auto;padding:14px 20px}
-  
+
   .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px;animation:fadeIn .4s ease}
-  .card-hdr{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;flex-wrap:wrap}
+  .card-hdr{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
   .card-body{padding:16px;display:flex;flex-direction:column;gap:14px}
 
-  /* OCR RESULT */
-  .ocr-res{display:none;flex-direction:column;gap:8px;padding:14px;background:rgba(0,200,83,.06);border-radius:12px;border:1px solid rgba(0,200,83,.25)}
-  .ocr-res.show{display:flex}
-  .ocr-title{font-size:12px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px}
-  .ocr-row{display:flex;gap:10px;align-items:flex-start}
-  .ocr-lbl{font-size:11px;color:var(--muted);width:80px;flex-shrink:0;padding-top:2px}
-  .ocr-val{font-size:13px;font-weight:600;word-break:break-all;font-family:'IBM Plex Mono',monospace}
-
-  /* QR */
+  /* QR Scanner */
   .qr-wrap{position:relative;width:100%;aspect-ratio:1/1;background:#000;border-radius:12px;overflow:hidden;display:none}
   .qr-wrap.show{display:block}
   #qr-reader video{width:100%!important;height:100%!important;object-fit:cover!important}
   #qr-reader__dashboard_section_csr{display:none!important}
   .qr-ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:10}
   .qr-frame{width:60%;aspect-ratio:1/1;position:relative}
-  .qr-frame::before,.qr-frame::after,.qr-fi::before,.qr-fi::after{content:'';position:absolute;width:24px;height:24px;border-color:var(--green);border-style:solid}
+  .qr-frame::before,.qr-frame::after,.qr-fi::before,.qr-fi::after{content:'';position:absolute;width:24px;height:24px;border-color:var(--orange);border-style:solid}
   .qr-frame::before{top:0;left:0;border-width:3px 0 0 3px}
   .qr-frame::after{top:0;right:0;border-width:3px 3px 0 0}
   .qr-fi::before{bottom:0;left:0;border-width:0 0 3px 3px}
   .qr-fi::after{bottom:0;right:0;border-width:0 3px 3px 0}
-  .qr-line{position:absolute;left:5%;right:5%;height:2px;background:linear-gradient(90deg,transparent,var(--green),transparent);animation:qrScan 2s ease-in-out infinite;box-shadow:0 0 8px var(--green)}
+  .qr-line{position:absolute;left:5%;right:5%;height:2px;background:linear-gradient(90deg,transparent,var(--orange),transparent);animation:qrScan 2s ease-in-out infinite;box-shadow:0 0 8px var(--orange)}
   @keyframes qrScan{0%,100%{top:8%}50%{top:88%}}
   .qr-status{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:12px;color:rgba(255,255,255,.8);background:rgba(0,0,0,.5);padding:6px;backdrop-filter:blur(4px);z-index:10}
   .qr-stop{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:20px;padding:6px 12px;font-size:12px;cursor:pointer;backdrop-filter:blur(4px);font-family:'Sarabun',sans-serif;z-index:20}
   .qr-start{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px 20px;border:2px dashed var(--border);border-radius:14px;cursor:pointer;transition:all .2s;background:var(--surface2)}
-  .qr-start:active{border-color:var(--green);background:rgba(0,200,83,.06)}
-  .qr-spin{display:none;align-items:center;justify-content:center;gap:12px;padding:16px;background:rgba(0,200,83,.07);border-radius:12px;border:1px solid rgba(0,200,83,.2)}
+  .qr-start:active{border-color:var(--orange);background:rgba(249,115,22,.06)}
+  .qr-spin{display:none;align-items:center;justify-content:center;gap:12px;padding:16px;background:rgba(249,115,22,.07);border-radius:12px;border:1px solid rgba(249,115,22,.2)}
   .qr-spin.show{display:flex}
-  .spinner{width:22px;height:22px;border:2.5px solid rgba(0,200,83,.3);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
-  .spin-txt{font-size:13px;color:var(--green);font-weight:600}
+  .spinner{width:22px;height:22px;border:2.5px solid rgba(249,115,22,.3);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+  .spin-txt{font-size:13px;color:var(--orange);font-weight:600}
   @keyframes spin{to{transform:rotate(360deg)}}
 
-  /* FORM */
   .field{display:flex;flex-direction:column;gap:6px}
   .field label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-  .field label span{color:var(--red)}
-  .field-row{display:flex;gap:8px;align-items:flex-end}
-  .field-row .field{flex:1}
-  input,select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:11px 14px;font-family:'Sarabun',sans-serif;font-size:15px;color:var(--text);outline:none;transition:border-color .2s;-webkit-appearance:none}
-  input:focus,select:focus{border-color:var(--green)}
-  input::placeholder{color:var(--muted)}
-  input.mono{font-family:'IBM Plex Mono',monospace;font-size:13px}
-  select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237d8590' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
-  select option{background:var(--surface2)}
-  .phone-hint{font-size:11px;margin-top:3px}
+  input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-family:'Sarabun',sans-serif;font-size:15px;color:var(--text);outline:none;transition:border-color .2s;-webkit-appearance:none}
+  input:focus{border-color:var(--orange)}
+  input.mono{font-family:'IBM Plex Mono',monospace;font-size:14px;letter-spacing:.5px}
 
-  /* CONFIRM */
-  .cf-panel{background:var(--surface);border:1px solid rgba(0,200,83,.3);border-radius:16px;overflow:hidden;margin-bottom:16px}
-  .cf-hdr{padding:14px 16px;background:rgba(0,200,83,.1);border-bottom:1px solid rgba(0,200,83,.2);font-weight:700;font-size:14px;color:var(--green)}
-  .cf-row{display:flex;padding:11px 16px;border-bottom:1px solid var(--border);gap:12px}
-  .cf-row:last-child{border-bottom:none}
-  .cf-key{font-size:12px;color:var(--muted);width:90px;flex-shrink:0;padding-top:2px}
-  .cf-val{font-size:14px;font-weight:500;word-break:break-all}
-  .cf-val.mono{font-family:'IBM Plex Mono',monospace;font-size:13px}
-  .cf-photo{width:100%;border-radius:9px;object-fit:cover;max-height:160px;display:block;margin-top:4px}
+  /* PKG CARD */
+  .pkg-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px}
+  .pkg-hdr{padding:14px 16px;background:rgba(249,115,22,.1);border-bottom:1px solid rgba(249,115,22,.2);font-weight:700;font-size:14px;color:var(--orange);display:flex;justify-content:space-between}
+  .pkg-row{display:flex;padding:11px 16px;border-bottom:1px solid var(--border);gap:12px;min-height:45px}
+  .pkg-row:last-child{border-bottom:none}
+  .pkg-key{font-size:12px;color:var(--muted);width:80px;flex-shrink:0;padding-top:2px}
+  .pkg-val{font-size:14px;font-weight:600;word-break:break-all}
+  .pkg-val.mono{font-family:'IBM Plex Mono',monospace;font-size:13px}
+  .pkg-photo{width:100%;border-radius:8px;object-fit:cover;max-height:160px;display:block;margin-top:6px;border:1px solid var(--border)}
+
+  /* SIGNATURE */
+  .sig-box{position:relative;background:#fff;border:2px solid var(--border);border-radius:12px;overflow:hidden;width:100%;aspect-ratio:16/9;touch-action:none}
+  .sig-pad{width:100%;height:100%}
+  .sig-clear{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;z-index:10;font-family:'Sarabun',sans-serif}
+
+  /* WAITING LIST */
+  .wait-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .wait-item{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:all .2s}
+  .wait-item:active{transform:scale(.98);border-color:var(--orange)}
+  .wait-info{display:flex;flex-direction:column;gap:4px}
+  .wait-id{font-size:13px;color:var(--orange);font-weight:700;font-family:'IBM Plex Mono',monospace}
+  .wait-name{font-size:14px;font-weight:600}
+  .wait-time{font-size:11px;color:var(--muted)}
+  .wait-empty{text-align:center;padding:24px;color:var(--muted);font-size:13px;background:var(--surface2);border-radius:10px;border:1px dashed var(--border)}
 
   /* SBAR */
   .sbar{margin-bottom:16px;border-radius:10px;padding:12px 14px;font-size:13px;display:flex;align-items:flex-start;gap:8px;line-height:1.5}
@@ -131,6 +129,9 @@
   @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.7}}
   .hidden{display:none!important}
   .mt8{margin-top:8px}
+  .text-center{text-align:center}
+  
+  .loading-text { color: var(--muted); font-style: italic; font-weight: normal; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -142,14 +143,13 @@
   const APP_CONFIG = {
     LIFF_ID:  '2009804334-UVtUlWoI',
     GAS_URL:  'https://script.google.com/macros/s/AKfycbyNG5xPRMJ8tM-NynWQd5dZVvitH3ubWK8y6uqTGRBOjaQj1Bp_ixX_H4N1wMndpDOM4Q/exec',
-    ORG_NAME: 'หอพักเดโม',
+    ORG_NAME: 'โรงเรียนของเราน่าอยู่',
   };
 </script>
 
-<!-- overlays -->
 <div id="ov-load" class="ov">
-  <div class="ov-icon load">📦</div>
-  <div class="ov-title blue" id="load-txt">กำลังเชื่อมต่อระบบ...</div>
+  <div class="ov-icon load">📬</div>
+  <div class="ov-title orange" id="load-txt">กำลังตรวจสอบสิทธิ์...</div>
 </div>
 <div id="ov-block" class="ov hidden">
   <div class="ov-icon block">🚫</div>
@@ -161,41 +161,40 @@
 </div>
 <div id="ov-ok" class="ov hidden">
   <div class="ov-icon ok">✅</div>
-  <div class="ov-title green">บันทึกสำเร็จ!</div>
-  <div class="success-id" id="ok-tracking">—</div>
-  <div class="alert green" id="ok-msg"></div>
-  <button class="btn btn-secondary" style="max-width:240px" onclick="resetAll()">📦 บันทึกพัสดุชิ้นต่อไป</button>
+  <div class="ov-title green">จ่ายพัสดุสำเร็จ!</div>
+  <div class="info-card mt8" style="text-align:center;padding:20px">
+    <div style="font-size:12px;color:var(--muted)">จ่ายพัสดุรหัส</div>
+    <div style="font-size:24px;font-weight:700;color:var(--green);font-family:'IBM Plex Mono',monospace" id="ok-id">—</div>
+    <div style="font-size:13px;margin-top:8px" id="ok-name"></div>
+  </div>
+  <div class="alert green">ระบบได้อัปเดตข้อมูล<br>และแจ้งเตือนผู้รับเรียบร้อยแล้ว</div>
+  <button class="btn btn-secondary" style="max-width:240px" onclick="resetAll()">📬 จ่ายพัสดุชิ้นต่อไป</button>
   <button class="btn btn-primary"   style="max-width:240px" onclick="liff.closeWindow()">✔️ ปิดและกลับสู่แชท</button>
 </div>
 
-<!-- hidden file inputs -->
-<input type="file" id="qr-file"     accept="image/*"                        class="hidden">
-<input type="file" id="qp-camera"   accept="image/*" capture="environment" class="hidden">
-<input type="file" id="qp-gallery"  accept="image/*"                        class="hidden">
+<!-- hidden file input for Gallery QR Scan -->
+<input type="file" id="qr-file" accept="image/*" class="hidden">
 
 <!-- header -->
 <div class="hdr">
-  <div class="hdr-icon">📦</div>
-  <div><div class="hdr-title">บันทึกพัสดุเข้า</div><div class="hdr-sub" id="ui-org-name">Loading...</div></div>
+  <div class="hdr-icon">📬</div>
+  <div><div class="hdr-title">จ่ายพัสดุออก</div><div class="hdr-sub" id="ui-org-name">Loading...</div></div>
   <div class="badge" id="badge-name">...</div>
 </div>
 
 <div class="content">
   <!-- steps -->
   <div class="steps">
-    <div class="step active" id="step1"><span class="step-num">1</span>สแกนป้าย</div>
-    <div class="step"        id="step2"><span class="step-num">2</span>ข้อมูล</div>
-    <div class="step"        id="step3"><span class="step-num">3</span>ยืนยัน</div>
+    <div class="step active" id="step1"><span class="step-num">1</span>สแกน</div>
+    <div class="step"        id="step2"><span class="step-num">2</span>เซ็นรับ</div>
   </div>
 
   <div class="sbar hidden" id="sbar"><span class="sbar-icon" id="sbar-icon">ℹ️</span><span id="sbar-txt"></span></div>
 
-  <!-- ======================================================= -->
-  <!-- STEP 1                                                   -->
-  <!-- ======================================================= -->
+  <!-- STEP 1: SCAN & LIST -->
   <div id="sec-scan">
     <div class="card">
-      <div class="card-hdr">📱 สแกน QR Code / บาร์โค้ด</div>
+      <div class="card-hdr">📱 สแกน หรือ ค้นหาพัสดุ</div>
       <div class="card-body">
         <div class="qr-wrap" id="qr-wrap">
           <div id="qr-reader"></div>
@@ -205,153 +204,119 @@
         </div>
         
         <div class="qr-start" id="qr-start" onclick="startLive()">
-          <div style="font-size:48px">📱</div>
-          <div style="font-size:15px;font-weight:700">กดเพื่อเปิดกล้องสแกน</div>
-          <div style="font-size:12px;color:var(--muted);line-height:1.6;text-align:center;">รองรับ QR Code, CODE128, EAN<br>สแกนเลขพัสดุได้ทันที</div>
+          <div style="font-size:42px">📱</div>
+          <div style="font-size:15px;font-weight:700">เปิดกล้องสแกน</div>
+          <div style="font-size:12px;color:var(--muted);text-align:center">สแกนบาร์โค้ดพัสดุ<br>หรือ QR รหัสรับพัสดุ</div>
         </div>
         
         <div class="qr-spin" id="qr-spin"><div class="spinner"></div><div class="spin-txt" id="qr-spin-txt">กำลังเปิดกล้อง...</div></div>
         
-        <button class="btn btn-secondary mt8" onclick="$('qr-file').value='';$('qr-file').click()" style="font-size:13px">🖼️ เลือกรูปภาพจากเครื่อง (เพื่อสแกน QR)</button>
+        <button class="btn btn-secondary mt8" onclick="$('qr-file').value='';$('qr-file').click()" style="font-size:13px; padding:10px;">🖼️ เลือกรูปจากเครื่อง (สแกนรูป QR)</button>
         
-        <div class="ocr-res" id="qr-res" style="margin-top:4px">
-          <div class="ocr-title" style="color:var(--green)">✅ อ่านเลขพัสดุสำเร็จ</div>
-          <div class="ocr-row"><div class="ocr-lbl">เลขพัสดุ</div><div class="ocr-val" id="qr-trk-val">—</div></div>
+        <div style="text-align:center;color:var(--muted);font-size:12px;margin:8px 0">- หรือ -</div>
+        
+        <div class="field">
+          <label>พิมพ์รหัสรับ / เลขพัสดุ</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="manual-val" class="mono" placeholder="เช่น 1504681400" autocomplete="off" onkeydown="if(event.key==='Enter')searchPackage()">
+            <button class="btn btn-primary" style="width:auto;padding:0 20px" onclick="searchPackage()">🔍</button>
+          </div>
         </div>
       </div>
     </div>
-    
-    <button class="btn btn-secondary mt8" id="btn-manual" onclick="showManual()">⌨️ พิมพ์เลขพัสดุเอง (กรณีสแกนไม่ติด)</button>
-    <div id="manual-box" class="card hidden mt8">
-      <div class="card-hdr">⌨️ พิมพ์เลขพัสดุ</div>
+
+    <!-- WAITING LIST SECTION -->
+    <div class="card">
+      <div class="card-hdr" style="justify-content:space-between">
+        <div>📋 รายการพัสดุรอรับ</div>
+        <button class="btn btn-secondary" style="width:auto;padding:4px 10px;font-size:11px;height:auto" onclick="loadWaiting(1)">🔄 รีเฟรช</button>
+      </div>
       <div class="card-body">
-        <div class="field"><label>เลขพัสดุ <span>*</span></label>
-          <input type="text" id="manual-val" class="mono" placeholder="เช่น TH123456789TH" autocomplete="off" autocapitalize="characters" oninput="onManualInput()" onkeydown="if(event.key==='Enter')confirmManual()">
+        <input type="text" id="wait-search" placeholder="ค้นหาชื่อ, เบอร์, รหัส..." autocomplete="off" oninput="debounceWaitSearch()">
+        <div id="wait-list-container" class="wait-list">
+          <div class="wait-empty">กำลังโหลดรายการ...</div>
         </div>
-        <button class="btn btn-primary" onclick="confirmManual()">ยืนยัน ➜</button>
-        <button class="btn btn-secondary" onclick="hideManual()">ยกเลิก</button>
+        <div id="wait-pagination" style="display:flex;justify-content:space-between;margin-top:12px;align-items:center"></div>
       </div>
     </div>
-    
-    <button class="btn btn-primary mt8 hidden" id="btn-next1-qr" onclick="goStep2()">ถัดไป: ถ่ายรูปและกรอกข้อมูล ➜</button>
   </div>
 
-  <!-- ======================================================= -->
-  <!-- STEP 2                                                   -->
-  <!-- ======================================================= -->
-  <div id="sec-form" class="hidden">
-    <div class="card">
-      <div class="card-hdr">📦 เลขพัสดุ</div>
-      <div style="padding:14px 16px"><div style="font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--green)" id="f-trk-preview">—</div></div>
-    </div>
-    
-    <!-- ถ่ายรูปพัสดุ (บังคับ) -->
-    <div class="card" id="f-qr-photo-card">
-      <div class="card-hdr">📸 ถ่ายรูปพัสดุ <span style="font-size:10px;background:rgba(248,81,73,.15);border:1px solid rgba(248,81,73,.35);color:var(--red);border-radius:20px;padding:2px 9px;font-weight:700;margin-left:auto">บังคับ</span></div>
-      <div class="card-body">
-        <div id="qp-idle" style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px;border:2px dashed var(--border);border-radius:12px;background:var(--surface2)">
-          <div style="font-size:42px">📷</div><div style="font-size:14px;font-weight:700">กดถ่ายรูปกล่องพัสดุ</div><div style="font-size:12px;color:var(--muted)">รูปนี้จะส่งเป็นหลักฐานไปยัง Telegram</div>
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="$('qp-camera').click()">📷 ถ่ายภาพ</button>
-          <button class="btn btn-secondary" onclick="$('qp-gallery').click()">🖼️ คลัง</button>
-        </div>
-        <div id="qp-preview" style="display:none;position:relative;border-radius:10px;overflow:hidden">
-          <img id="qp-img" src="" style="width:100%;max-height:200px;object-fit:cover" alt="">
-          <button onclick="clearQRPhoto()" style="position:absolute;bottom:7px;right:7px;background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.25);border-radius:8px;font-size:12px;color:#fff;padding:4px 10px;cursor:pointer;font-family:'Sarabun',sans-serif">📷 ถ่ายใหม่</button>
-        </div>
+  <!-- STEP 2: SIGN -->
+  <div id="sec-sign" class="hidden">
+    <div class="pkg-card">
+      <div class="pkg-hdr">
+        <span>ข้อมูลพัสดุ</span>
+        <span style="color:var(--text);background:var(--orange);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;color:#000">พร้อมจ่าย</span>
+      </div>
+      <div class="pkg-row"><div class="pkg-key">รหัสรับ</div><div class="pkg-val mono" id="p-id" style="color:var(--orange)">—</div></div>
+      <div class="pkg-row"><div class="pkg-key">เลขพัสดุ</div><div class="pkg-val mono" id="p-trk">—</div></div>
+      <div class="pkg-row"><div class="pkg-key">ผู้รับ</div><div class="pkg-val" id="p-name">—</div></div>
+      <div class="pkg-row"><div class="pkg-key">โทรศัพท์</div><div class="pkg-val mono" id="p-phone">—</div></div>
+      <div class="pkg-row"><div class="pkg-key">ลักษณะ</div><div class="pkg-val" id="p-type">—</div></div>
+      <div class="pkg-row"><div class="pkg-key">เวลาเข้า</div><div class="pkg-val mono" id="p-time">—</div></div>
+      <div id="p-photo-row" class="pkg-row" style="flex-direction:column;display:none">
+        <div class="pkg-key" style="width:100%">รูปตอนรับเข้า</div>
+        <img id="p-photo" class="pkg-photo" src="" alt="Package photo">
       </div>
     </div>
-    
-    <!-- form fields -->
+
     <div class="card">
-      <div class="card-hdr">📝 ข้อมูลผู้รับ</div>
+      <div class="card-hdr">✍️ ลายเซ็นผู้รับ</div>
       <div class="card-body">
-        <div class="field"><label>ชื่อผู้รับ (บนกล่อง) <span>*</span></label><input type="text" id="f-name" placeholder="เช่น สมชาย ใจดี" oninput="checkForm()"></div>
-        <div class="field"><label>เบอร์โทรศัพท์ (ถ้ามี) <span>*</span></label>
-          <div class="field-row">
-            <div class="field"><input type="tel" id="f-phone" placeholder="0801234567" maxlength="10" oninput="checkForm()"></div>
-            <button class="btn btn-secondary" style="width:auto;padding:11px 14px;white-space:nowrap;font-size:13px;flex-shrink:0" onclick="setNoPhone()">ไม่มีเบอร์</button>
-          </div>
-          <div class="phone-hint" id="phone-hint"></div>
+        <div class="sig-box">
+          <canvas id="sig-pad" class="sig-pad"></canvas>
+          <button class="sig-clear" onclick="sigPad.clear()">🗑️ ล้าง</button>
         </div>
-        <div class="field"><label>ลักษณะพัสดุ <span>*</span></label>
-          <select id="f-type" onchange="checkForm()">
-            <option value="">-- เลือกลักษณะพัสดุ --</option>
-            <option value="กล่อง">📦 กล่อง</option>
-            <option value="ซอง">📨 ซอง</option>
-            <option value="ถุง">🛍️ ถุง</option>
-            <option value="ม้วน">🧻 ม้วน</option>
-            <option value="อื่นๆ">📦 อื่นๆ</option>
-          </select>
-        </div>
+        <div style="font-size:11px;color:var(--muted);text-align:center">กรุณาให้ผู้รับเซ็นชื่อในกรอบสีขาวด้านบน</div>
       </div>
     </div>
+
+    <div class="sbar hidden" id="sbar2"><span class="sbar-icon" id="sbar2-icon">ℹ️</span><span id="sbar2-txt"></span></div>
+
     <div class="btn-row">
       <button class="btn btn-secondary btn-back" onclick="goStep1()">← กลับ</button>
-      <button class="btn btn-primary" id="btn-next2" onclick="goStep3()" disabled>ถัดไป: ยืนยัน ➜</button>
-    </div>
-  </div>
-
-  <!-- ======================================================= -->
-  <!-- STEP 3                                                   -->
-  <!-- ======================================================= -->
-  <div id="sec-confirm" class="hidden">
-    <div class="cf-panel">
-      <div class="cf-hdr">✅ ตรวจสอบข้อมูลก่อนบันทึก</div>
-      <div class="cf-row"><div class="cf-key">เลขพัสดุ</div><div class="cf-val mono" id="c-trk">—</div></div>
-      <div class="cf-row"><div class="cf-key">ชื่อผู้รับ</div><div class="cf-val" id="c-name">—</div></div>
-      <div class="cf-row"><div class="cf-key">เบอร์โทร</div><div class="cf-val mono" id="c-phone">—</div></div>
-      <div class="cf-row"><div class="cf-key">ลักษณะ</div><div class="cf-val" id="c-type">—</div></div>
-      <div class="cf-row"><div class="cf-key">รูปพัสดุ</div>
-        <div class="cf-val">
-          <img id="c-photo" class="cf-photo hidden" src="" alt="">
-          <span id="c-photo-none" style="color:var(--red);font-size:12px">ยังไม่มีรูป</span>
-        </div>
-      </div>
-      <div class="cf-row"><div class="cf-key">บันทึกโดย</div><div class="cf-val" id="c-admin">—</div></div>
-    </div>
-    <div class="sbar hidden" id="sbar2"><span class="sbar-icon" id="sbar2-icon">ℹ️</span><span id="sbar2-txt"></span></div>
-    <div class="btn-row">
-      <button class="btn btn-secondary btn-back" onclick="goStep2()">← แก้ไข</button>
-      <button class="btn btn-primary" id="btn-submit" onclick="submitPackage()">📦 บันทึกพัสดุ</button>
+      <button class="btn btn-primary" id="btn-submit" onclick="submitPickup()">📦 ยืนยันจ่ายพัสดุ</button>
     </div>
   </div>
 </div>
 
 <script>
 const S = {
-  tracking:'', name:'', phone:'', type:'',
-  adminName:'', adminUserId:'', adminType:'', packageId:'',
-  qpDataUrl:null, qpBase64:null, qpMime:'image/jpeg',
-  submitB64:null, submitMime:null,
+  adminName:'', adminUserId:'', adminType:'',
   qrScanner:null, qrRunning:false,
-  submitting:false,
+  pkgInfo:null, submitting:false,
+  waitPage: 1, waitSearch: ''
 };
 const $ = id => document.getElementById(id);
+let sigPad = null;
+let waitTimer = null;
 
 // ── INIT ──
 async function init() {
-  document.getElementById('ui-org-name').textContent = APP_CONFIG.ORG_NAME;
+  $('ui-org-name').textContent = APP_CONFIG.ORG_NAME;
   try {
     await liff.init({ liffId: APP_CONFIG.LIFF_ID });
     if (!liff.isLoggedIn()) { liff.login(); return; }
     const p = await liff.getProfile();
     S.adminName=p.displayName; S.adminUserId=p.userId;
     setLoad('กำลังตรวจสอบสิทธิ์...');
+    
     const auth = await checkAuth(p.userId);
     if (!auth.isAdmin) { $('block-name').textContent=p.displayName; $('block-reason').textContent=auth.reason||'ยังไม่ได้เข้าระบบ'; show('ov-block'); return; }
+    
     S.adminType=auth.adminType||'STAFF';
     $('badge-name').textContent=p.displayName;
-    if (S.adminType==='MAIN_ADMIN') $('badge-name').classList.add('main');
-    $('c-admin').textContent=p.displayName+(S.adminType==='MAIN_ADMIN'?' (แอดมินหลัก)':' (เจ้าหน้าที่)');
-
     show('main');
-    $('qr-file').addEventListener('change', onQRFile);
-    $('qp-camera').addEventListener('change', onQPPhoto);
-    $('qp-gallery').addEventListener('change', onQPPhoto);
+    
+    // ตั้งค่าตัวสแกนและลายเซ็น
     S.qrScanner = new Html5Qrcode("qr-reader");
-  } catch(e) { setLoad('❌ '+e.message); setTimeout(()=>show('main'),1500); }
+    $('qr-file').addEventListener('change', onQRFile);
+    initSigPad();
+    
+    // โหลดรายการรอรับครั้งแรก
+    loadWaiting(1);
+
+  } catch(e) { setLoad('❌ '+e.message); setTimeout(()=>show('main'), 1500); }
 }
 
 async function checkAuth(uid) {
@@ -361,149 +326,256 @@ async function checkAuth(uid) {
 function show(s){['ov-load','ov-block','ov-ok'].forEach(x=>$(x).classList.add('hidden'));if(s!=='main')$(s).classList.remove('hidden');}
 function setLoad(t){$('load-txt').textContent=t;}
 
+// ── AUDIO & HAPTIC FEEDBACK ──
+function playSuccessBeep() {
+  if(navigator.vibrate) navigator.vibrate(200);
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(800, ctx.currentTime);
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.1);
+    osc.stop(ctx.currentTime + 0.1);
+  } catch(e) {}
+}
+
+// ── WAITING LIST ──
+function debounceWaitSearch() {
+  clearTimeout(waitTimer);
+  waitTimer = setTimeout(() => loadWaiting(1), 500);
+}
+
+async function loadWaiting(page = 1) {
+  S.waitPage = page;
+  const container = $('wait-list-container');
+  container.innerHTML = '<div class="wait-empty"><div class="spinner" style="margin:0 auto; border-top-color:var(--orange)"></div></div>';
+  
+  try {
+    const res = await callGAS('list_waiting_packages', {
+      userId: S.adminUserId,
+      search: $('wait-search').value.trim(),
+      page: S.waitPage
+    });
+    renderWaiting(res);
+  } catch(e) {
+    container.innerHTML = `<div class="wait-empty" style="color:var(--red)">❌ ${e.message}</div>`;
+  }
+}
+
+function renderWaiting(data) {
+  const container = $('wait-list-container');
+  const pagiBox = $('wait-pagination');
+  
+  if (!data.items || data.items.length === 0) {
+    container.innerHTML = '<div class="wait-empty">🎉 ไม่มีพัสดุรอรับในขณะนี้</div>';
+    pagiBox.innerHTML = '';
+    return;
+  }
+  
+  let html = '';
+  data.items.forEach(p => {
+    html += `
+      <div class="wait-item" onclick="lookup('${p.packageId}')">
+        <div class="wait-info">
+          <div class="wait-id">${p.packageId}</div>
+          <div class="wait-name">${p.recipientName}</div>
+          <div class="wait-time">เข้าเมื่อ: ${p.checkIn}</div>
+        </div>
+        <div style="color:var(--muted)">➔</div>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+
+  // Pagination UI
+  let pagi = '';
+  if (data.page > 1) {
+    pagi += `<button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:12px" onclick="loadWaiting(${data.page - 1})">⬅️ ก่อนหน้า</button>`;
+  } else {
+    pagi += `<div style="width:75px"></div>`; // spacer
+  }
+  
+  pagi += `<span style="font-size:12px;color:var(--muted)">หน้า ${data.page}/${data.totalPages}</span>`;
+  
+  if (data.page < data.totalPages) {
+    pagi += `<button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:12px" onclick="loadWaiting(${data.page + 1})">ถัดไป ➡️</button>`;
+  } else {
+    pagi += `<div style="width:75px"></div>`; // spacer
+  }
+  
+  pagiBox.innerHTML = pagi;
+}
+
 // ── QR SCAN ──
 async function startLive() {
   if(!S.qrScanner)S.qrScanner=new Html5Qrcode("qr-reader");
   $('qr-start').style.display='none';$('qr-spin').classList.add('show');$('qr-spin-txt').textContent='กำลังเปิดกล้อง...';
   try {
     await S.qrScanner.start({facingMode:"environment"},{fps:10,aspectRatio:1.0,disableFlip:false},
-      (dec)=>{const t=parseTrk(dec);if(t){stopLive();handleQR(t);}},()=>{});
+      (dec)=>{const t=parseTrk(dec);if(t){stopLive();lookup(t);}},()=>{});
     $('qr-wrap').classList.add('show');$('qr-spin').classList.remove('show');$('qr-status').textContent='กำลังค้นหาบาร์โค้ด...';S.qrRunning=true;
-  } catch(err){$('qr-spin').classList.remove('show');$('qr-start').style.display='';setSbar('warning','⚠️ เปิดกล้องไม่ได้ — กรุณาพิมพ์เลขพัสดุเอง');}
+  } catch(err){$('qr-spin').classList.remove('show');$('qr-start').style.display='';setSbar('warning','⚠️ เปิดกล้องไม่ได้ — พิมพ์รหัสด้านล่างแทน');}
 }
 
 function stopLive(){S.qrRunning=false;if(S.qrScanner&&S.qrScanner.isScanning)S.qrScanner.stop().catch(()=>{});$('qr-wrap').classList.remove('show');$('qr-spin').classList.remove('show');}
 
+// ── GALLERY QR SCAN ──
 async function onQRFile(e) {
-  const file=e.target.files&&e.target.files[0];if(!file)return;e.target.value='';
-  $('qr-spin').classList.add('show');$('qr-spin-txt').textContent='กำลังสแกนรูปภาพ...';
-  $('btn-next1-qr').classList.add('hidden');$('qr-res').classList.remove('show');
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  e.target.value = '';
+  $('qr-spin').classList.add('show');
+  $('qr-spin-txt').textContent = 'กำลังสแกนรูปภาพ...';
   try {
-    // ใช้ตัวสแกนของเบราว์เซอร์ 100% ไม่พึ่ง AI / ไม่พึ่ง Cloud
+    if(!S.qrScanner) S.qrScanner = new Html5Qrcode("qr-reader");
     const dec = await S.qrScanner.scanFile(file, true);
     const t = parseTrk(dec);
-    if(t) handleQR(t);
-    else setSbar('warning','⚠️ หาเลขพัสดุไม่เจอ — กรุณาพิมพ์เลขเองด้านล่าง');
-  }catch(err){
-    setSbar('warning','⚠️ ระบบไม่สามารถอ่านบาร์โค้ดในรูปนี้ได้ — กรุณาพิมพ์เลขเอง');
-  }finally{
+    if(t) { stopLive(); lookup(t); }
+    else setSbar('warning', '⚠️ หาเลขพัสดุในรูปไม่เจอ — กรุณาพิมพ์เลขเอง');
+  } catch(err) {
+    setSbar('warning', '⚠️ ระบบไม่สามารถอ่านบาร์โค้ดในรูปนี้ได้');
+  } finally {
     $('qr-spin').classList.remove('show');
   }
 }
 
-function handleQR(t){S.tracking=t;$('qr-trk-val').textContent=t;$('qr-res').classList.add('show');$('btn-next1-qr').classList.remove('hidden');setSbar('success','✅ เลขพัสดุ: '+t);}
-
-// ── CAPTURE PHOTO (STEP 2) ──
-async function onQPPhoto(e) {
-  const file=e.target.files&&e.target.files[0];if(!file)return;e.target.value='';
-  try {
-    const c=await compress(file,1200,0.80);
-    S.qpDataUrl=c.dataUrl;S.qpBase64=c.base64;S.qpMime='image/jpeg';
-    $('qp-img').src=c.dataUrl;$('qp-idle').style.display='none';$('qp-preview').style.display='';
-    checkForm();
-  }catch(err){setSbar('error','❌ '+err.message);}
+// ── MANUAL SEARCH ──
+function searchPackage(){
+  const val=$('manual-val').value.trim();
+  if(val.length<4){setSbar('error','❌ กรุณาใส่รหัสอย่างน้อย 4 ตัว');return;}
+  lookup(val);
 }
-function clearQRPhoto(){S.qpDataUrl=null;S.qpBase64=null;$('qp-idle').style.display='';$('qp-preview').style.display='none';$('qp-img').src='';checkForm();}
+
+// ── LOOKUP (INSTANT TRANSITION UX) ──
+async function lookup(identifier) {
+  stopLive();
+  $('manual-val').value = '';
+  
+  // ให้ Feedback ทันที (สั่น + เสียงบี๊บ)
+  playSuccessBeep();
+
+  // ทรานซิชันสลับหน้าไป Step 2 ทันที พร้อมแสดงสถานะ "กำลังโหลด"
+  $('sec-scan').classList.add('hidden');
+  $('sec-sign').classList.remove('hidden');
+  setStep(2);
+  clearSbar();
+  clearSbar2();
+  
+  const loaderHtml = `<span class="loading-text">⏳ กำลังค้นหาข้อมูล...</span>`;
+  $('p-id').innerHTML = loaderHtml;
+  $('p-trk').innerHTML = loaderHtml;
+  $('p-name').innerHTML = loaderHtml;
+  $('p-phone').innerHTML = loaderHtml;
+  $('p-type').innerHTML = loaderHtml;
+  $('p-time').innerHTML = loaderHtml;
+  $('p-photo-row').style.display = 'none';
+  $('btn-submit').disabled = true;
+
+  try {
+    // ยิงคำขอไปหลังบ้าน
+    const res = await callGAS('lookup_package',{identifier, userId:S.adminUserId});
+    if(!res||!res.packageId) throw new Error('ข้อมูลไม่ครบถ้วน');
+    if(res.status!=='รอรับ') throw new Error(`พัสดุรหัส ${res.packageId}\nสถานะปัจจุบันคือ "${res.status}"\n(ถูกจ่ายออกไปแล้ว)`);
+    
+    S.pkgInfo = res;
+    
+    // อัปเดต UI เมื่อได้ข้อมูลจริง
+    $('p-id').textContent = res.packageId; 
+    $('p-trk').textContent = res.trackingNumber || '—';
+    $('p-name').textContent = res.recipientName; 
+    $('p-phone').textContent = res.phone;
+    $('p-type').textContent = res.packageType || '—'; 
+    $('p-time').textContent = String(res.checkIn).substring(0,16);
+    
+    if(res.photoUrl){$('p-photo').src=res.photoUrl;$('p-photo-row').style.display='flex';}
+    
+    if(sigPad) sigPad.clear();
+    setTimeout(resizeCanvas, 100);
+    
+    $('btn-submit').disabled = false;
+    setSbar2('success', '✅ พบข้อมูลพัสดุ กรุณาให้ผู้รับเซ็นชื่อ');
+
+  } catch(e) { 
+    // หากล้มเหลว หรือถูกรับไปแล้ว ให้ตีกลับไปหน้าแรก
+    goStep1();
+    setSbar('error','❌ '+e.message); 
+  }
+}
 
 // ── NAVIGATION ──
-function setStep(n){[1,2,3].forEach(i=>{const el=$('step'+i);el.classList.remove('active','done');if(i<n)el.classList.add('done');else if(i===n)el.classList.add('active');});}
+function setStep(n){[1,2].forEach(i=>{const el=$('step'+i);el.classList.remove('active','done');if(i<n)el.classList.add('done');else if(i===n)el.classList.add('active');});}
 
-function goStep1(){stopLive();['sec-form','sec-confirm'].forEach(id=>$(id).classList.add('hidden'));$('sec-scan').classList.remove('hidden');setStep(1);clearSbar();}
-
-function goStep2(){
-  if(!S.tracking||S.tracking==='ไม่พบ'){setSbar('error','❌ ยังไม่มีเลขพัสดุ');return;}
+function goStep1(){
   stopLive();
-  $('f-trk-preview').textContent=S.tracking;
-  
-  // Clear fields since there is no AI prefill anymore
-  $('f-name').value=''; 
-  $('f-phone').value='';
-  $('f-type').value='';
-
-  $('sec-scan').classList.add('hidden');$('sec-confirm').classList.add('hidden');$('sec-form').classList.remove('hidden');
-  setStep(2);clearSbar();checkForm();
+  $('sec-sign').classList.add('hidden');$('sec-scan').classList.remove('hidden');
+  setStep(1);clearSbar();$('manual-val').value='';S.pkgInfo=null;
 }
 
-function goStep3(){
-  const name=$('f-name').value.trim(),phone=$('f-phone').value.trim(),type=$('f-type').value;
-  if(!name||!phone||!type){setSbar('error','❌ กรุณากรอกข้อมูลให้ครบ');return;}
-  if(!S.qpBase64){setSbar('error','❌ กรุณาถ่ายรูปกล่องพัสดุก่อน');return;}
-  
-  S.submitB64=S.qpBase64; 
-  S.submitMime=S.qpMime;
-  
-  $('c-trk').textContent=S.tracking; $('c-name').textContent=name; $('c-phone').textContent=phone; $('c-type').textContent=type;
-  if(S.qpDataUrl){$('c-photo').src=S.qpDataUrl;$('c-photo').classList.remove('hidden');$('c-photo-none').style.display='none';}
-  else{$('c-photo').classList.add('hidden');$('c-photo-none').style.display='';}
-  
-  const btn=$('btn-submit');btn.disabled=false;btn.textContent='📦 บันทึกพัสดุ';S.submitting=false;
-  $('sec-form').classList.add('hidden');$('sec-confirm').classList.remove('hidden');clearSbar2();setStep(3);
+// ── SIGNATURE ──
+function initSigPad(){
+  const c=$('sig-pad');
+  sigPad=new SignaturePad(c,{minWidth:1.5,maxWidth:3.5,penColor:"#0d1117",backgroundColor:"#ffffff"});
+  window.addEventListener("resize", resizeCanvas);
 }
-
-// ── FORM VALIDATION ──
-function checkForm(){
-  const name=$('f-name').value.trim(),phone=$('f-phone').value.trim(),type=$('f-type').value;
-  const photoOk=!!S.qpBase64;
-  $('btn-next2').disabled=!(name.length>=2&&(/^0[689]\d{8}$/.test(phone.replace(/\D/g,''))||phone==='ไม่มีเบอร์')&&type!==''&&photoOk);
-  const hint=$('phone-hint');
-  if(phone&&phone!=='ไม่มีเบอร์'){const c=phone.replace(/\D/g,'');if(/^0[689]\d{8}$/.test(c)){hint.style.color='var(--green)';hint.textContent='✓ ถูกต้อง';}else if(c.length>=4){hint.style.color='var(--yellow)';hint.textContent='⚠️ ขึ้นต้น 06/08/09 10 หลัก';}else hint.textContent='';}else hint.textContent='';
+function resizeCanvas(){
+  const c=$('sig-pad');if(!c)return;
+  const ratio=Math.max(window.devicePixelRatio||1, 1);
+  c.width=c.offsetWidth*ratio; c.height=c.offsetHeight*ratio;
+  c.getContext("2d").scale(ratio,ratio);
+  if(sigPad)sigPad.clear();
 }
-function setNoPhone(){$('f-phone').value='ไม่มีเบอร์';checkForm();}
 
 // ── SUBMIT ──
-async function submitPackage(){
-  if(S.submitting)return; S.submitting=true;
-  const btn=$('btn-submit');btn.disabled=true;btn.textContent='⏳ กำลังบันทึก...';clearSbar2();
-  const tracking=S.tracking,name=$('f-name').value.trim(),phone=$('f-phone').value.trim(),type=$('f-type').value;
+async function submitPickup(){
+  if(S.submitting)return;
+  if(sigPad.isEmpty()){setSbar2('error','❌ กรุณาเซ็นชื่อรับพัสดุก่อน');return;}
+  
+  S.submitting=true;
+  const btn=$('btn-submit');btn.disabled=true;btn.textContent='⏳ กำลังประมวลผล...';
+  clearSbar2();
+  
+  const b64 = sigPad.toDataURL("image/png").split(',')[1];
+  
   try {
-    btn.textContent='⏳ กำลังบันทึกข้อมูล...';
-    const res=await callGAS('liff_submit',{userId:S.adminUserId,tracking,name,phone,type,hasPhoto:!!S.submitB64});
-    if(!res||!res.packageId)throw new Error('ไม่ได้รับ packageId');
-    const packageId=res.packageId; S.packageId=packageId;
+    const res = await callGAS('pickup_package',{
+      userId: S.adminUserId,
+      packageId: S.pkgInfo.packageId,
+      signatureBase64: b64,
+      tgChatId: S.pkgInfo.tgChatId,
+      adminName: S.adminName
+    }, 45000);
     
-    if(S.submitB64){
-      btn.textContent='📤 กำลังส่งรูปลงระบบ...';
-      try{await callGAS('upload_package_photo',{packageId,userId:S.adminUserId,imageBase64:S.submitB64,imageMime:S.submitMime,trackingNumber:tracking,recipientName:name,packageType:type,adminName:S.adminName},90000);}
-      catch(pe){console.warn('Photo:',pe.message);setSbar2('warning','⚠️ บันทึกแล้ว แต่ส่งรูปไม่สำเร็จ: '+pe.message);}
-    }
-    $('ok-tracking').textContent=tracking;
-    $('ok-msg').textContent='รหัส: '+packageId+'\nรูปพัสดุส่งไปยังกลุ่มเรียบร้อย ✅';
+    $('ok-id').textContent=S.pkgInfo.packageId;
+    $('ok-name').textContent='ผู้รับ: '+S.pkgInfo.recipientName;
     show('ov-ok');
-  }catch(e){setSbar2('error','❌ บันทึกไม่สำเร็จ: '+e.message+'\nกรุณากดบันทึกอีกครั้ง');btn.disabled=false;btn.textContent='📦 บันทึกพัสดุ';}
-  finally{S.submitting=false;}
+  } catch(e) {
+    setSbar2('error','❌ '+e.message);
+    btn.disabled=false; btn.textContent='📦 ยืนยันจ่ายพัสดุ';
+  } finally { S.submitting=false; }
 }
 
 // ── RESET ──
 function resetAll(){
-  Object.assign(S,{tracking:'',name:'',phone:'',type:'',packageId:'',qpDataUrl:null,qpBase64:null,submitB64:null,submitMime:null,submitting:false});
-  stopLive();
-  $('f-name').value='';$('f-phone').value='';$('f-type').value='';
-  $('btn-manual').classList.remove('hidden');$('manual-box').classList.add('hidden');
-  $('qr-res').classList.remove('show');$('btn-next1-qr').classList.add('hidden');
-  clearQRPhoto();clearSbar();show('main');goStep1();
+  goStep1(); show('main');
+  loadWaiting(S.waitPage); // รีเฟรชรายการรอรับ
 }
-
-// ── MANUAL ──
-function showManual(){$('manual-box').classList.remove('hidden');$('btn-manual').classList.add('hidden');setTimeout(()=>$('manual-val').focus(),100);}
-function hideManual(){$('manual-box').classList.add('hidden');$('btn-manual').classList.remove('hidden');$('manual-val').value='';}
-function onManualInput(){const v=$('manual-val').value.trim();$('btn-next1-qr').classList.toggle('hidden',v.length<4);if(v.length>=4)S.tracking=v.toUpperCase();}
-function confirmManual(){const v=$('manual-val').value.trim().toUpperCase();if(v.length<4){setSbar('error','❌ กรุณาใส่อย่างน้อย 4 ตัว');return;}S.tracking=v;hideManual();$('btn-next1-qr').classList.remove('hidden');setSbar('success','✅ เลขพัสดุ: '+v);}
 
 // ── GAS CALL ──
-async function callGAS(action,extra,timeoutMs=60000){
+async function callGAS(action,extra,timeoutMs=30000){
   const ctrl=new AbortController(),tid=setTimeout(()=>ctrl.abort(),timeoutMs);
   try{
-    const r=await fetch(APP_CONFIG.GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action,...extra}),redirect:'follow',signal:ctrl.signal});
-    clearTimeout(tid);if(!r.ok)throw new Error('GAS HTTP '+r.status);
-    const txt=await r.text();let data;
-    try{data=JSON.parse(txt);}catch(_){throw new Error('ระบบตอบกลับผิดพลาด: '+txt.substring(0,100));}
-    if(data.status==='error')throw new Error(data.message||action+' ล้มเหลว');
-    return data.result!==undefined?data.result:data;
-  }catch(e){clearTimeout(tid);if(e.name==='AbortError')throw new Error('หมดเวลาเชื่อมต่อ');throw e;}
+    const r=await fetch(APP_CONFIG.GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action,...extra}),signal:ctrl.signal});
+    clearTimeout(tid);if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=JSON.parse(await r.text());
+    if(d.status==='error')throw new Error(d.message);
+    return d.result!==undefined?d.result:d;
+  }catch(e){clearTimeout(tid);throw e;}
 }
 
-// ── IMAGE UTILS ──
-function compress(file,maxW,q=0.80){return new Promise((res,rej)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{let w=img.width,h=img.height;if(w>maxW||h>maxW){if(w>h){h=Math.round(h*maxW/w);w=maxW;}else{w=Math.round(w*maxW/h);h=maxW;}}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);const out=c.toDataURL('image/jpeg',q);URL.revokeObjectURL(url);res({dataUrl:out,base64:out.split(',')[1],mime:'image/jpeg'});};img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('โหลดรูปไม่ได้'));};img.src=url;});}
 function parseTrk(raw){let t=(raw||'').trim();if(t.startsWith('http')){try{t=new URL(t).pathname.split('/').filter(Boolean).pop()||t;}catch(_){}}if(t.startsWith('{')){try{const o=JSON.parse(t);t=o.tracking||o.trackingNumber||o.id||t;}catch(_){}}return t.length>=4?t:null;}
 
 // ── SBAR ──
@@ -511,9 +583,6 @@ function setSbar(type,text){if(!type){clearSbar();return;}const b=$('sbar');b.cl
 function clearSbar(){$('sbar').classList.add('hidden');}
 function setSbar2(type,text){if(!type){clearSbar2();return;}const b=$('sbar2');b.className='sbar '+type;b.classList.remove('hidden');$('sbar2-icon').textContent={error:'❌',success:'✅',info:'ℹ️',warning:'⚠️'}[type]||'ℹ️';$('sbar2-txt').textContent=text;}
 function clearSbar2(){$('sbar2').classList.add('hidden');}
-
-window.onerror=function(msg,src,line){const t=$('load-txt');if(t)t.textContent='❌ '+msg+' (L'+line+')';};
-setTimeout(function(){const ov=$('ov-load');if(ov&&!ov.classList.contains('hidden'))$('load-txt').textContent='⏱️ โหลดนานเกิน — ลองปิดแล้วเปิดใหม่';},30000);
 
 init();
 </script>
